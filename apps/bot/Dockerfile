@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy root package.json and lockfile
 COPY package.json ./
-COPY apps/bot/package.json ./apps/bot/
+COPY ./apps/bot ./apps/bot
 
 # Install dependencies
 RUN npm install
