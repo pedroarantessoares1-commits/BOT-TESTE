@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              BigInt    @id
+  guildId         BigInt
+  username        String?   @db.VarChar(100)
+  displayName     String?   @db.VarChar(100)
+  avatarUrl       String?   @db.Text
+  level           Int       @default(0)
+  totalXp         BigInt    @default(0)
+  seasonXp        BigInt    @default(0)
+  coins           BigInt    @default(0)
+  dailyStreak     Int       @default(0)
+  lastDaily       DateTime?
+  lastMessageXp   DateTime?
+  lastReactionXp  DateTime?
+  voiceJoinTime   DateTime?
+  isVerified      Boolean   @default(false)
+  joinedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([id, guildId])
+  @@map("users")
+}
+
+model ServerConfig {
+  guildId               BigInt    @id
+  currencyName          String    @default("Coins") @db.VarChar(50)
+  minAccountAgeDays     Int       @default(30)
+  antiraidJoins         Int       @default(10)
+  antiraidSeconds       Int       @default(30)
+  antispamImgCount      Int       @default(3)
+  antispamImgSeconds    Int       @default(10)
+  antispamTxtCount      Int       @default(5)
+  antispamTxtSeconds    Int       @default(10)
+  logChannelId          BigInt?
+  levelupChannelId      BigInt?
+  verificationChannelId BigInt?
+  verifiedRoleId        BigInt?
+  unverifiedRoleId      BigInt?
+  defaultRoleId         BigInt?
+  xpMessageMin          Int       @default(15)
+  xpMessageMax          Int       @default(25)
+  xpReactionMin         Int       @default(5)
+  xpReactionMax         Int       @default(10)
+  xpVoiceMin            Int       @default(3)
+  xpVoiceMax            Int       @default(5)
+  messageCooldownSec    Int       @default(60)
+  reactionCooldownSec   Int       @default(30)
+  lockdownActive        Boolean   @default(false)
+  lockdownAutoDisableMin Int      @default(5)
+  pointsPerReal         Decimal?  @db.Decimal(10, 2)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("server_config")
+}
+
+model ShopItem {
+  id            Int            @id @default(autoincrement())
+  guildId       BigInt
+  name          String         @db.VarChar(100)
+  description   String?        @db.Text
+  price         Int
+  itemType      String         @db.VarChar(50) // 'role_permanent', 'role_temporary', 'role_seasonal', 'badge', 'xp_booster'
+  itemValue     String?        @db.Text
+  durationHours Int?
+  stock         Int?
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  transactions  Transaction[]
+
+  @@map("shop_items")
+}
+
+model Transaction {
+  id          Int       @id @default(autoincrement())
+  guildId     BigInt
+  userId      BigInt
+  itemId      Int?
+  shopItem    ShopItem? @relation(fields: [itemId], references: [id])
+  amount      Int
+  type        String    @db.VarChar(20) // 'purchase', 'daily', 'admin_add', 'admin_remove', 'mission_reward'
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+
+  @@map("transactions")
+}
+
+model BannedIp {
+  id              Int       @id @default(autoincrement())
+  guildId         BigInt
+  ipHash          String    @db.VarChar(256)
+  originalUserId  BigInt?
+  reason          String?   @db.Text
+  bannedBy        BigInt?
+  createdAt       DateTime  @default(now())
+
+  @@unique([guildId, ipHash])
+  @@map("banned_ips")
+}
+
+model UserIp {
+  id        Int      @id @default(autoincrement())
+  guildId   BigInt
+  userId    BigInt
+  ipHash    String   @db.VarChar(256)
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, userId, ipHash])
+  @@map("user_ips")
+}
+
+model ModerationLog {
+  id            Int       @id @default(autoincrement())
+  guildId       BigInt
+  eventType     String    @db.VarChar(50) // 'ban', 'kick', 'mute', 'ipban', 'msg_edit', 'msg_delete', 'age_block', 'antiraid', 'antispam'
+  targetUserId  BigInt?
+  moderatorId   BigInt?
+  reason        String?   @db.Text
+  details       Json?     @db.JsonB
+  createdAt     DateTime  @default(now())
+
+  @@index([guildId, eventType], name: "idx_modlogs_guild_type")
+  @@index([guildId, createdAt], name: "idx_modlogs_guild_date")
+  @@map("moderation_logs")
+}
+
+model Season {
+  id          Int               @id @default(autoincrement())
+  guildId     BigInt
+  seasonNum   Int
+  startedAt   DateTime
+  endedAt     DateTime?
+  isActive    Boolean           @default(true)
+  snapshots   SeasonSnapshot[]
+
+  @@unique([guildId, seasonNum])
+  @@map("seasons")
+}
+
+model SeasonSnapshot {
+  id          Int      @id @default(autoincrement())
+  seasonId    Int
+  season      Season   @relation(fields: [seasonId], references: [id])
+  userId      BigInt
+  finalLevel  Int
+  finalXp     BigInt
+  finalCoins  BigInt
+  rankPos     Int
+  createdAt   DateTime @default(now())
+
+  @@map("season_snapshots")
+}
+
+model Achievement {
+  id              Int               @id @default(autoincrement())
+  guildId         BigInt
+  name            String            @db.VarChar(100)
+  description     String?           @db.Text
+  conditionType   String            @db.VarChar(50) // 'level', 'messages', 'voice_hours', 'daily_streak', 'missions'
+  conditionValue  Int
+  rewardCoins     Int               @default(0)
+  rewardBadge     String?           @db.VarChar(100)
+  icon            String?           @db.VarChar(100)
+  createdAt       DateTime          @default(now())
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            Int         @id @default(autoincrement())
+  guildId       BigInt
+  userId        BigInt
+  achievementId Int
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([guildId, userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Mission {
+  id             Int            @id @default(autoincrement())
+  guildId        BigInt
+  type           String         @db.VarChar(20) // 'daily', 'weekly'
+  description    String         @db.Text
+  objectiveType  String         @db.VarChar(50) // 'messages', 'reactions', 'voice_minutes', 'daily_missions'
+  objectiveValue Int
+  rewardXp       Int            @default(0)
+  rewardCoins    Int            @default(0)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  userMissions   UserMission[]
+
+  @@map("missions")
+}
+
+model UserMission {
+  id          Int       @id @default(autoincrement())
+  guildId     BigInt
+  userId      BigInt
+  missionId   Int
+  mission     Mission   @relation(fields: [missionId], references: [id])
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  assignedAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([guildId, userId, missionId, assignedAt])
+  @@map("user_missions")
+}
+
+model AccountWhitelist {
+  id        Int      @id @default(autoincrement())
+  guildId   BigInt
+  userId    BigInt
+  addedBy   BigInt
+  reason    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, userId])
+  @@map("account_whitelist")
+}
+
+model Warning {
+  id          Int      @id @default(autoincrement())
+  guildId     BigInt
+  userId      BigInt
+  moderatorId BigInt
+  reason      String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@map("warnings")
+}
+
+model DailyClaim {
+  id          Int      @id @default(autoincrement())
+  guildId     BigInt
+  userId      BigInt
+  claimedAt   DateTime @default(now())
+  xpReward    Int?
+  coinsReward Int?
+
+  @@map("daily_claims")
+}
+
+model ChannelXpMultiplier {
+  id         Int     @id @default(autoincrement())
+  guildId    BigInt
+  channelId  BigInt
+  multiplier Decimal @default(1.00) @db.Decimal(3, 2)
+
+  @@unique([guildId, channelId])
+  @@map("channel_xp_multipliers")
+}
+
+model SpamWhitelist {
+  id          Int      @id @default(autoincrement())
+  guildId     BigInt
+  entityType  String   @db.VarChar(10) // 'user' ou 'role'
+  entityId    BigInt
+  addedBy     BigInt
+  createdAt   DateTime @default(now())
+
+  @@unique([guildId, entityType, entityId])
+  @@map("spam_whitelist")
+}

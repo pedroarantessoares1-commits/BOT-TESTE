@@ -1,0 +1,21 @@
+{
+  "name": "discord-rpg-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd apps/bot && npm run dev",
+    "build": "cd apps/bot && npm run build",
+    "start": "cd apps/bot && npm run start",
+    "db:generate": "cd apps/bot && npx prisma generate",
+    "db:push": "cd apps/bot && npx prisma db push",
+    "db:migrate": "cd apps/bot && npx prisma migrate dev"
+  },
+  "dependencies": {
+    "discord.js": "^14.26.4"
+  },
+  "description": "Este é o repositório do bot Discord desenvolvido utilizando a stack: - **TypeScript & Node.js 20** - **discord.js v14** - **PostgreSQL + Prisma ORM** - **Redis & BullMQ** - **@napi-rs/canvas**",
+  "main": "index.js",
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC"
+}

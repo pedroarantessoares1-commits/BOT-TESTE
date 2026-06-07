@@ -1,0 +1,36 @@
+services:
+  bot:
+    build: ./apps/bot
+    environment:
+      - DATABASE_URL
+      - REDIS_URL
+      - DISCORD_TOKEN
+      - DISCORD_CLIENT_ID
+      - IP_HASH_SALT
+      - JWT_SECRET
+      - HCAPTCHA_SECRET
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=discordbot
+      - POSTGRES_USER=bot
+      - POSTGRES_PASSWORD=botpass
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
+  redis_data:
