@@ -9,7 +9,7 @@
     "deploy-commands": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^0.1.53",
+    "@napi-rs/canvas": "^0.1.100",
     "@prisma/client": "^5.14.0",
     "bullmq": "^5.7.8",
     "discord.js": "^14.15.2",

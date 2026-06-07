@@ -2,9 +2,6 @@ import { Guild, GuildMember } from 'discord.js';
 import { prisma } from '../../lib/database';
 import { logger } from '../../lib/logger';
 import { XpCalculator } from './xp-calculator';
-import { generateLevelUpCard } from '../../canvas/level-up-card';
-import { sendLevelUpMessage } from '../../events/messageCreate'; // Helper para enviar, ou usar client
-import { CustomClient } from '../../client';
 
 export class LevelManager {
   /**
@@ -14,10 +11,6 @@ export class LevelManager {
     try {
       const gId = BigInt(guildId);
       const uId = BigInt(userId);
-
-      // Usar transaction ou atomic increment
-      // Como o prisma não suporta atomic update retornado o valor modificado tão facilmente com cálculo de nível,
-      // faremos um read, modify, write. Cuidado com concorrência aqui. Ideal seria upsert e depois verificar.
       
       const user = await prisma.user.upsert({
         where: { id_guildId: { id: uId, guildId: gId } },
@@ -36,7 +29,7 @@ export class LevelManager {
         },
       });
 
-      // Calcular nível atual a partir do totalXp atualizado
+      // Calcular nível atual a partir do seasonXp atualizado usando a nova curva
       const currentLevel = user.level;
       const newLevel = XpCalculator.levelFromXp(Number(user.seasonXp));
 
@@ -50,8 +43,8 @@ export class LevelManager {
       }
 
       return { leveled, oldLevel: currentLevel, newLevel, user };
-    } catch (err) {
-      logger.error('Error processing XP gain:', err);
+    } catch (err: any) {
+      logger.error(`Error processing XP gain: ${err?.message || err}`);
       return null;
     }
   }
@@ -65,7 +58,7 @@ export class LevelManager {
   }
 
   /**
-   * Atribui cargo de nível e remove o anterior (substituído, conforme default).
+   * Atribui cargo de nível e remove o anterior.
    */
   static async assignLevelRole(guild: Guild, member: GuildMember, newLevel: number) {
     if (!this.shouldGetRole(newLevel)) return;
@@ -83,7 +76,6 @@ export class LevelManager {
 
       await member.roles.add(role);
 
-      // Remover cargo do nível anterior se for cumulativo vs substituído (default: substituído)
       const previousLevel = newLevel - 10;
       if (previousLevel > 0) {
         const prevRoleName = this.getLevelRoleName(previousLevel);
@@ -92,8 +84,8 @@ export class LevelManager {
           await member.roles.remove(prevRole);
         }
       }
-    } catch (err) {
-      logger.error(`Failed to assign level role to ${member.user.tag}:`, err);
+    } catch (err: any) {
+      logger.error(`Failed to assign level role to ${member.user.tag}: ${err?.message || err}`);
     }
   }
 }
